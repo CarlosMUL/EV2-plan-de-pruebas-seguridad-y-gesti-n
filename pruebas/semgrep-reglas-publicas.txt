@@ -1,0 +1,15 @@
+                  
+                  
+┌────────────────┐
+│ 1 Code Finding │
+└────────────────┘
+                                                   
+  [36m[22m[24m  BACKEND\src\routes\documentos.js[0m
+    ❯❱ [1mjavascript.express.security.audit.xss.direct-response-write.direct-response-write[0m
+          [31m[1m[24m❰❰ Blocking ❱❱[0m
+          Detected directly writing to a Response object from user-defined input. This bypasses any HTML      
+          escaping and may expose your application to a Cross-Site-scripting (XSS) vulnerability. Instead, use
+          'resp.render()' to render safely escaped HTML.                                                      
+          Details: https://sg.run/vzGl                                                                        
+                                                                                                              
+          252┆ res.send(documento.documento);

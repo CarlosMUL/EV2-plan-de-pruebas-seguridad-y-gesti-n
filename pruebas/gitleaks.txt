@@ -1,0 +1,26 @@
+Finding:     JWT_SECRET=0d1d8132f0fde5beabb417b434ff10f1cae8635a461686b0f46ac9c2bbfbd0e8
+Secret:      0d1d8132f0fde5beabb417b434ff10f1cae8635a461686b0f46ac9c2bbfbd0e8
+RuleID:      generic-api-key
+Entropy:     3.820313
+File:        BACKEND/.env
+Line:        3
+Fingerprint: BACKEND/.env:generic-api-key:3
+
+Finding:     JWT_SECRET=0d1d8132f0fde5beabb417b434ff10f1cae8635a461686b0f46ac9c2bbfbd0e8
+Secret:      0d1d8132f0fde5beabb417b434ff10f1cae8635a461686b0f46ac9c2bbfbd0e8
+RuleID:      generic-api-key
+Entropy:     3.820313
+File:        .env
+Line:        1
+Fingerprint: .env:generic-api-key:1
+
+Finding:     JWT_SECRET: `0d1d8132f0fde5beabb417b434ff10f1cae8635a461686b0f46ac9c2bbfbd0e8`
+Secret:      0d1d8132f0fde5beabb417b434ff10f1cae8635a461686b0f46ac9c2bbfbd0e8
+RuleID:      generic-api-key
+Entropy:     3.820313
+File:        README.md
+Line:        30
+Fingerprint: README.md:generic-api-key:30
+
+6:50PM INF scanned ~466372 bytes (466.37 KB) in 62.6ms
+6:50PM WRN leaks found: 3

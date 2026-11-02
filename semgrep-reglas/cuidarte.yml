@@ -1,0 +1,118 @@
+# Reglas propias de Semgrep para la auditoría estática de Cuidarte+
+# Uso: semgrep scan --config semgrep-reglas/cuidarte.yml BACKEND/src FRONTEND/src
+
+rules:
+  - id: plaintext-password-comparison
+    languages: [javascript]
+    severity: ERROR
+    message: Contraseña comparada en texto plano. Usar bcrypt.compare().
+    metadata: { cwe: "CWE-256", owasp: "A02:2021" }
+    pattern-either:
+      - pattern: $U.contrasena !== $P
+      - pattern: $U.contrasena === $P
+      - pattern: $U.contrasena != $P
+      - pattern: $U.contrasena == $P
+
+  - id: plaintext-password-insert
+    languages: [javascript]
+    severity: ERROR
+    message: Contraseña guardada sin hash en la tabla usuarios. Aplicar bcrypt.hash() antes de guardar.
+    metadata: { cwe: "CWE-256", owasp: "A02:2021" }
+    pattern-either:
+      - pattern-regex: INSERT INTO usuarios \([^)]*contrasena
+      - pattern-regex: contrasena=\$\$\{
+
+  - id: jwt-secret-fallback-hardcoded
+    languages: [javascript]
+    severity: ERROR
+    message: Secreto JWT con valor por defecto escrito en el código. Si falta la variable de entorno, cualquiera puede firmar tokens.
+    metadata: { cwe: "CWE-798", owasp: "A07:2021" }
+    pattern: process.env.JWT_SECRET || "..."
+
+  - id: db-credentials-hardcoded
+    languages: [javascript]
+    severity: ERROR
+    message: Cadena de conexión con usuario y contraseña escritos en el código.
+    metadata: { cwe: "CWE-798", owasp: "A07:2021" }
+    pattern-regex: postgres://[^:/"'\s]+:[^@"'\s]+@
+
+  - id: route-without-auth-check
+    languages: [javascript]
+    severity: ERROR
+    message: Ruta sin verificación de token ni de rol (getUserFromAuthHeader / requireRole).
+    metadata: { cwe: "CWE-862", owasp: "A01:2021" }
+    paths:
+      include: ["**/routes/**"]
+      exclude: ["**/routes/auth.js"]
+    patterns:
+      - pattern: $R.$M($PATH, ..., async ($REQ, $RES) => { ... })
+      - metavariable-regex:
+          metavariable: $M
+          regex: ^(get|post|put|delete)$
+      - pattern-not: $R.$M($PATH, ..., async ($REQ, $RES) => { ... getUserFromAuthHeader(...); ... })
+      - pattern-not: $R.$M($PATH, ..., async ($REQ, $RES) => { ... $X = getUserFromAuthHeader(...); ... })
+      - pattern-not: $R.$M($PATH, ..., async ($REQ, $RES) => { ... $X = await requireRole(...); ... })
+
+  - id: error-message-leak
+    languages: [javascript]
+    severity: WARNING
+    message: Se devuelve el mensaje interno del error al cliente (expone detalles de la base de datos).
+    metadata: { cwe: "CWE-209", owasp: "A05:2021" }
+    pattern-regex: glosa:\s*\w+\.message
+
+  - id: cors-wildcard
+    languages: [javascript]
+    severity: WARNING
+    message: CORS sin restricción de origen; cualquier sitio puede llamar a la API.
+    metadata: { cwe: "CWE-942", owasp: "A05:2021" }
+    pattern: $APP.use(cors())
+
+  - id: missing-helmet
+    languages: [javascript]
+    severity: INFO
+    message: La aplicación Express no usa helmet (sin cabeceras HSTS, CSP, X-Frame-Options).
+    metadata: { cwe: "CWE-693", owasp: "A05:2021" }
+    patterns:
+      - pattern: const $APP = express();
+      - pattern-not-inside: |
+          $H = require("helmet");
+          ...
+
+  - id: artificial-delay
+    languages: [javascript]
+    severity: WARNING
+    message: Retardo artificial aplicado a un endpoint (degrada el rendimiento y la disponibilidad).
+    metadata: { category: "performance" }
+    pattern: delayMiddleware(...)
+
+  - id: token-in-localstorage
+    languages: [javascript]
+    severity: WARNING
+    message: Token de sesión guardado en localStorage; queda accesible para JavaScript ante un XSS.
+    metadata: { cwe: "CWE-922", owasp: "A07:2021" }
+    pattern-either:
+      - pattern: localStorage.setItem("token", ...)
+      - pattern: localStorage.getItem("token")
+
+  - id: upload-trusts-client-mimetype
+    languages: [javascript]
+    severity: WARNING
+    message: El filtro de subida confía en el MIME declarado por el cliente; no valida la firma del archivo.
+    metadata: { cwe: "CWE-434", owasp: "A05:2021" }
+    pattern: $LIST.includes($FILE.mimetype)
+
+  - id: validation-result-discarded
+    languages: [javascript]
+    severity: WARNING
+    message: El resultado de validate() (con stripUnknown) se descarta; los campos no declarados siguen en req.body (mass assignment).
+    metadata: { cwe: "CWE-915", owasp: "A08:2021" }
+    patterns:
+      - pattern: "await $S.validate($D, {..., stripUnknown: true, ...});"
+      - pattern-not-inside: $X = await $S.validate(...);
+
+  - id: audit-username-as-id
+    languages: [javascript]
+    severity: WARNING
+    message: Se inserta nombreUsuario (texto) en auditoria.usuario_id (BIGINT); la inserción falla y la acción no queda registrada.
+    metadata: { cwe: "CWE-778", owasp: "A09:2021" }
+    pattern: $U?.nombreUsuario || null

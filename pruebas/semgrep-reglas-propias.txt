@@ -1,0 +1,445 @@
+                    
+                    
+┌──────────────────┐
+│ 69 Code Findings │
+└──────────────────┘
+                                     
+  [36m[22m[24m  BACKEND\src\app.js[0m
+     ❱ [1msemgrep-reglas.missing-helmet[0m
+          [31m[1m[24m❰❰ Blocking ❱❱[0m
+          La aplicación Express no usa helmet (sin cabeceras HSTS, CSP, X-Frame-Options).
+                                                                                         
+           19┆ const app = express();
+   
+    ❯❱ [1msemgrep-reglas.cors-wildcard[0m
+          [31m[1m[24m❰❰ Blocking ❱❱[0m
+          CORS sin restricción de origen; cualquier sitio puede llamar a la API.
+                                                                                
+           21┆ app.use(cors());
+                                    
+  [36m[22m[24m  BACKEND\src\db.js[0m
+   ❯❯❱ [1msemgrep-reglas.db-credentials-hardcoded[0m
+          [31m[1m[24m❰❰ Blocking ❱❱[0m
+          Cadena de conexión con usuario y contraseña escritos en el código.
+                                                                            
+            6┆ "postgres://postgres:alone15@localhost:5432/cuidarteplus";
+                                                     
+  [36m[22m[24m  BACKEND\src\middleware\validate.js[0m
+    ❯❱ [1msemgrep-reglas.validation-result-discarded[0m
+          [31m[1m[24m❰❰ Blocking ❱❱[0m
+          El resultado de validate() (con stripUnknown) se descarta; los campos no declarados siguen en
+          req.body (mass assignment).                                                                  
+                                                                                                       
+            5┆ await schema.validate(data, { abortEarly: false, stripUnknown: true });
+   
+    ❯❱ [1msemgrep-reglas.error-message-leak[0m
+          [31m[1m[24m❰❰ Blocking ❱❱[0m
+          Se devuelve el mensaje interno del error al cliente (expone detalles de la base de datos).
+                                                                                                    
+           21┆ glosa: error.message || error.toString(),
+                                              
+  [36m[22m[24m  BACKEND\src\routes\audit.js[0m
+   ❯❯❱ [1msemgrep-reglas.jwt-secret-fallback-hardcoded[0m
+          [31m[1m[24m❰❰ Blocking ❱❱[0m
+          Secreto JWT con valor por defecto escrito en el código. Si falta la variable de entorno, cualquiera
+          puede firmar tokens.                                                                               
+                                                                                                             
+            6┆ const JWT_SECRET = process.env.JWT_SECRET || "inseguro";
+   
+    ❯❱ [1msemgrep-reglas.error-message-leak[0m
+          [31m[1m[24m❰❰ Blocking ❱❱[0m
+          Se devuelve el mensaje interno del error al cliente (expone detalles de la base de datos).
+                                                                                                    
+           41┆ glosa: err.message || err.toString(),
+            ⋮┆----------------------------------------
+          107┆ glosa: err.message || err.toString(),
+                                             
+  [36m[22m[24m  BACKEND\src\routes\auth.js[0m
+   ❯❯❱ [1msemgrep-reglas.jwt-secret-fallback-hardcoded[0m
+          [31m[1m[24m❰❰ Blocking ❱❱[0m
+          Secreto JWT con valor por defecto escrito en el código. Si falta la variable de entorno, cualquiera
+          puede firmar tokens.                                                                               
+                                                                                                             
+            8┆ const JWT_SECRET = process.env.JWT_SECRET || "inseguro";
+   
+   ❯❯❱ [1msemgrep-reglas.plaintext-password-comparison[0m
+          [31m[1m[24m❰❰ Blocking ❱❱[0m
+          Contraseña comparada en texto plano. Usar bcrypt.compare().
+                                                                     
+           21┆ if (user.contrasena !== password) {
+   
+    ❯❱ [1msemgrep-reglas.error-message-leak[0m
+          [31m[1m[24m❰❰ Blocking ❱❱[0m
+          Se devuelve el mensaje interno del error al cliente (expone detalles de la base de datos).
+                                                                                                    
+           67┆ .json({ error: "Error en login", glosa: err.message || err.toString() });
+   
+   ❯❯❱ [1msemgrep-reglas.plaintext-password-insert[0m
+          [31m[1m[24m❰❰ Blocking ❱❱[0m
+          Contraseña guardada sin hash en la tabla usuarios. Aplicar bcrypt.hash() antes de guardar.
+                                                                                                    
+          110┆ "INSERT INTO usuarios (nombre_usuario, contrasena, correo) VALUES ($1, $2, $3) RETURNING
+               id, nombre_usuario, correo, created_at",                                                
+   
+    ❯❱ [1msemgrep-reglas.error-message-leak[0m
+          [31m[1m[24m❰❰ Blocking ❱❱[0m
+          Se devuelve el mensaje interno del error al cliente (expone detalles de la base de datos).
+                                                                                                    
+          163┆ glosa: err.message || err.toString(),
+                                                   
+  [36m[22m[24m  BACKEND\src\routes\documentos.js[0m
+   ❯❯❱ [1msemgrep-reglas.jwt-secret-fallback-hardcoded[0m
+          [31m[1m[24m❰❰ Blocking ❱❱[0m
+          Secreto JWT con valor por defecto escrito en el código. Si falta la variable de entorno, cualquiera
+          puede firmar tokens.                                                                               
+                                                                                                             
+            7┆ const JWT_SECRET = process.env.JWT_SECRET || "inseguro";
+   
+    ❯❱ [1msemgrep-reglas.upload-trusts-client-mimetype[0m
+          [31m[1m[24m❰❰ Blocking ❱❱[0m
+          El filtro de subida confía en el MIME declarado por el cliente; no valida la firma del archivo.
+                                                                                                         
+           22┆ if (allowedMimes.includes(file.mimetype)) {
+   
+    ❯❱ [1msemgrep-reglas.artificial-delay[0m
+          [31m[1m[24m❰❰ Blocking ❱❱[0m
+          Retardo artificial aplicado a un endpoint (degrada el rendimiento y la disponibilidad).
+                                                                                                 
+           66┆ router.post("/", delayMiddleware(5000), upload.single("documento"), async (req, res) => {
+   
+    ❯❱ [1msemgrep-reglas.error-message-leak[0m
+          [31m[1m[24m❰❰ Blocking ❱❱[0m
+          Se devuelve el mensaje interno del error al cliente (expone detalles de la base de datos).
+                                                                                                    
+          115┆ glosa: err.message || err.toString(),
+            ⋮┆----------------------------------------
+          178┆ glosa: err.message || err.toString(),
+            ⋮┆----------------------------------------
+          257┆ glosa: err.message || err.toString(),
+            ⋮┆----------------------------------------
+          295┆ glosa: err.message || err.toString(),
+                                                 
+  [36m[22m[24m  BACKEND\src\routes\examenes.js[0m
+   ❯❯❱ [1msemgrep-reglas.jwt-secret-fallback-hardcoded[0m
+          [31m[1m[24m❰❰ Blocking ❱❱[0m
+          Secreto JWT con valor por defecto escrito en el código. Si falta la variable de entorno, cualquiera
+          puede firmar tokens.                                                                               
+                                                                                                             
+            8┆ const JWT_SECRET = process.env.JWT_SECRET || "inseguro";
+   
+    ❯❱ [1msemgrep-reglas.artificial-delay[0m
+          [31m[1m[24m❰❰ Blocking ❱❱[0m
+          Retardo artificial aplicado a un endpoint (degrada el rendimiento y la disponibilidad).
+                                                                                                 
+           46┆ router.post("/", delayMiddleware(5000), validate(examenMedicoSchema), async (req, res) => {
+   
+    ❯❱ [1msemgrep-reglas.error-message-leak[0m
+          [31m[1m[24m❰❰ Blocking ❱❱[0m
+          Se devuelve el mensaje interno del error al cliente (expone detalles de la base de datos).
+                                                                                                    
+           93┆ glosa: err.message || err.toString(),
+   
+    ❯❱ [1msemgrep-reglas.artificial-delay[0m
+          [31m[1m[24m❰❰ Blocking ❱❱[0m
+          Retardo artificial aplicado a un endpoint (degrada el rendimiento y la disponibilidad).
+                                                                                                 
+           99┆ router.get("/", delayMiddleware(5000), async (req, res) => {
+   
+    ❯❱ [1msemgrep-reglas.error-message-leak[0m
+          [31m[1m[24m❰❰ Blocking ❱❱[0m
+          Se devuelve el mensaje interno del error al cliente (expone detalles de la base de datos).
+                                                                                                    
+          173┆ glosa: err.message || err.toString(),
+            ⋮┆----------------------------------------
+          256┆ glosa: err.message || err.toString(),
+            ⋮┆----------------------------------------
+          324┆ glosa: err.message || err.toString(),
+   
+    ❯❱ [1msemgrep-reglas.artificial-delay[0m
+          [31m[1m[24m❰❰ Blocking ❱❱[0m
+          Retardo artificial aplicado a un endpoint (degrada el rendimiento y la disponibilidad).
+                                                                                                 
+          330┆ router.put("/:id", delayMiddleware(5000), validate(updateExamenMedicoSchema), async (req,
+               res) => {                                                                                
+   
+    ❯❱ [1msemgrep-reglas.error-message-leak[0m
+          [31m[1m[24m❰❰ Blocking ❱❱[0m
+          Se devuelve el mensaje interno del error al cliente (expone detalles de la base de datos).
+                                                                                                    
+          390┆ glosa: err.message || err.toString(),
+            ⋮┆----------------------------------------
+          428┆ glosa: err.message || err.toString(),
+                                                  
+  [36m[22m[24m  BACKEND\src\routes\pacientes.js[0m
+   ❯❯❱ [1msemgrep-reglas.jwt-secret-fallback-hardcoded[0m
+          [31m[1m[24m❰❰ Blocking ❱❱[0m
+          Secreto JWT con valor por defecto escrito en el código. Si falta la variable de entorno, cualquiera
+          puede firmar tokens.                                                                               
+                                                                                                             
+            9┆ const JWT_SECRET = process.env.JWT_SECRET || "inseguro";
+   
+    ❯❱ [1msemgrep-reglas.error-message-leak[0m
+          [31m[1m[24m❰❰ Blocking ❱❱[0m
+          Se devuelve el mensaje interno del error al cliente (expone detalles de la base de datos).
+                                                                                                    
+          139┆ glosa: err.message || err.toString(),
+   
+    ❯❱ [1msemgrep-reglas.artificial-delay[0m
+          [31m[1m[24m❰❰ Blocking ❱❱[0m
+          Retardo artificial aplicado a un endpoint (degrada el rendimiento y la disponibilidad).
+                                                                                                 
+          145┆ router.get("/", delayMiddleware(5000), async (req, res) => {
+   
+    ❯❱ [1msemgrep-reglas.error-message-leak[0m
+          [31m[1m[24m❰❰ Blocking ❱❱[0m
+          Se devuelve el mensaje interno del error al cliente (expone detalles de la base de datos).
+                                                                                                    
+          167┆ glosa: err.message || err.toString(),
+            ⋮┆----------------------------------------
+          243┆ glosa: err.message || err.toString(),
+   
+   ❯❯❱ [1msemgrep-reglas.route-without-auth-check[0m
+          [31m[1m[24m❰❰ Blocking ❱❱[0m
+          Ruta sin verificación de token ni de rol (getUserFromAuthHeader / requireRole).
+                                                                                         
+          249┆ router.get("/buscar/rut/:rut", async (req, res) => {
+          250┆   try {
+          251┆     const { rut } = req.params;
+          252┆     const normalizedRut = normalizeRut(rut);
+          253┆
+          254┆     const result = await pool.query(
+          255┆       `SELECT p.*, u.nombre_usuario
+          256┆        FROM pacientes p
+          257┆        LEFT JOIN usuarios u ON u.id = p.usuario_id
+          258┆        WHERE p.rut = $1`,
+             [hid 15 additional lines, adjust with --max-lines-per-finding] 
+   
+    ❯❱ [1msemgrep-reglas.error-message-leak[0m
+          [31m[1m[24m❰❰ Blocking ❱❱[0m
+          Se devuelve el mensaje interno del error al cliente (expone detalles de la base de datos).
+                                                                                                    
+          270┆ glosa: err.message || err.toString(),
+            ⋮┆----------------------------------------
+          381┆ glosa: err.message || err.toString(),
+            ⋮┆----------------------------------------
+          419┆ glosa: err.message || err.toString(),
+                                              
+  [36m[22m[24m  BACKEND\src\routes\roles.js[0m
+   ❯❯❱ [1msemgrep-reglas.jwt-secret-fallback-hardcoded[0m
+          [31m[1m[24m❰❰ Blocking ❱❱[0m
+          Secreto JWT con valor por defecto escrito en el código. Si falta la variable de entorno, cualquiera
+          puede firmar tokens.                                                                               
+                                                                                                             
+            5┆ const JWT_SECRET = process.env.JWT_SECRET || 'inseguro';
+   
+    ❯❱ [1msemgrep-reglas.audit-username-as-id[0m
+          [31m[1m[24m❰❰ Blocking ❱❱[0m
+          Se inserta nombreUsuario (texto) en auditoria.usuario_id (BIGINT); la inserción falla y la acción no
+          queda registrada.                                                                                   
+                                                                                                              
+           25┆ authUser?.nombreUsuario || null,
+   
+    ❯❱ [1msemgrep-reglas.error-message-leak[0m
+          [31m[1m[24m❰❰ Blocking ❱❱[0m
+          Se devuelve el mensaje interno del error al cliente (expone detalles de la base de datos).
+                                                                                                    
+           32┆ res.status(500).json({ error: 'Error al crear rol', glosa: err.message || err.toString()
+               });                                                                                     
+   
+   ❯❯❱ [1msemgrep-reglas.route-without-auth-check[0m
+          [31m[1m[24m❰❰ Blocking ❱❱[0m
+          Ruta sin verificación de token ni de rol (getUserFromAuthHeader / requireRole).
+                                                                                         
+           36┆ router.get('/', async (req, res) => {
+           37┆   try {
+           38┆     const result = await pool.query('SELECT * FROM roles ORDER BY id DESC');
+           39┆     res.json(result.rows);
+           40┆   } catch (err) {
+           41┆     console.error(err);
+           42┆     res.status(500).json({ error: 'Error al listar roles', glosa: err.message ||
+               err.toString() });                                                              
+           43┆   }
+           44┆ });
+   
+    ❯❱ [1msemgrep-reglas.error-message-leak[0m
+          [31m[1m[24m❰❰ Blocking ❱❱[0m
+          Se devuelve el mensaje interno del error al cliente (expone detalles de la base de datos).
+                                                                                                    
+           42┆ res.status(500).json({ error: 'Error al listar roles', glosa: err.message || err.toString()
+               });                                                                                        
+   
+   ❯❯❱ [1msemgrep-reglas.route-without-auth-check[0m
+          [31m[1m[24m❰❰ Blocking ❱❱[0m
+          Ruta sin verificación de token ni de rol (getUserFromAuthHeader / requireRole).
+                                                                                         
+           46┆ router.get('/:id', async (req, res) => {
+           47┆   try {
+           48┆     const result = await pool.query('SELECT * FROM roles WHERE id=$1', [req.params.id]);
+           49┆     if (result.rows.length === 0) return res.status(404).json({ error: 'No encontrado' });
+           50┆     res.json(result.rows[0]);
+           51┆   } catch (err) {
+           52┆     console.error(err);
+           53┆     res.status(500).json({ error: 'Error al obtener rol', glosa: err.message ||
+               err.toString() });                                                             
+           54┆   }
+           55┆ });
+   
+    ❯❱ [1msemgrep-reglas.error-message-leak[0m
+          [31m[1m[24m❰❰ Blocking ❱❱[0m
+          Se devuelve el mensaje interno del error al cliente (expone detalles de la base de datos).
+                                                                                                    
+           53┆ res.status(500).json({ error: 'Error al obtener rol', glosa: err.message || err.toString()
+               });                                                                                       
+   
+    ❯❱ [1msemgrep-reglas.audit-username-as-id[0m
+          [31m[1m[24m❰❰ Blocking ❱❱[0m
+          Se inserta nombreUsuario (texto) en auditoria.usuario_id (BIGINT); la inserción falla y la acción no
+          queda registrada.                                                                                   
+                                                                                                              
+           65┆ authUser?.nombreUsuario || null,
+   
+    ❯❱ [1msemgrep-reglas.error-message-leak[0m
+          [31m[1m[24m❰❰ Blocking ❱❱[0m
+          Se devuelve el mensaje interno del error al cliente (expone detalles de la base de datos).
+                                                                                                    
+           72┆ res.status(500).json({ error: 'Error al actualizar rol', glosa: err.message ||
+               err.toString() });                                                            
+   
+    ❯❱ [1msemgrep-reglas.audit-username-as-id[0m
+          [31m[1m[24m❰❰ Blocking ❱❱[0m
+          Se inserta nombreUsuario (texto) en auditoria.usuario_id (BIGINT); la inserción falla y la acción no
+          queda registrada.                                                                                   
+                                                                                                              
+           83┆ authUser?.nombreUsuario || null,
+   
+    ❯❱ [1msemgrep-reglas.error-message-leak[0m
+          [31m[1m[24m❰❰ Blocking ❱❱[0m
+          Se devuelve el mensaje interno del error al cliente (expone detalles de la base de datos).
+                                                                                                    
+           90┆ res.status(500).json({ error: 'Error al eliminar rol', glosa: err.message || err.toString()
+               });                                                                                        
+                                                    
+  [36m[22m[24m  BACKEND\src\routes\tipo-examen.js[0m
+   ❯❯❱ [1msemgrep-reglas.route-without-auth-check[0m
+          [31m[1m[24m❰❰ Blocking ❱❱[0m
+          Ruta sin verificación de token ni de rol (getUserFromAuthHeader / requireRole).
+                                                                                         
+            6┆ router.get("/", async (req, res) => {
+            7┆   try {
+            8┆     const result = await pool.query(
+            9┆       "SELECT * FROM tipo_examen_medico ORDER BY nombre ASC"
+           10┆     );
+           11┆     res.json(result.rows);
+           12┆   } catch (err) {
+           13┆     console.error(err);
+           14┆     res.status(500).json({
+           15┆       error: "Error al listar tipos de examen",
+             [hid 4 additional lines, adjust with --max-lines-per-finding] 
+   
+    ❯❱ [1msemgrep-reglas.error-message-leak[0m
+          [31m[1m[24m❰❰ Blocking ❱❱[0m
+          Se devuelve el mensaje interno del error al cliente (expone detalles de la base de datos).
+                                                                                                    
+           16┆ glosa: err.message || err.toString(),
+   
+   ❯❯❱ [1msemgrep-reglas.route-without-auth-check[0m
+          [31m[1m[24m❰❰ Blocking ❱❱[0m
+          Ruta sin verificación de token ni de rol (getUserFromAuthHeader / requireRole).
+                                                                                         
+           22┆ router.get("/:id", async (req, res) => {
+           23┆   try {
+           24┆     const result = await pool.query(
+           25┆       "SELECT * FROM tipo_examen_medico WHERE id = $1",
+           26┆       [req.params.id]
+           27┆     );
+           28┆
+           29┆     if (result.rows.length === 0)
+           30┆       return res.status(404).json({ error: "No encontrado" });
+           31┆
+             [hid 9 additional lines, adjust with --max-lines-per-finding] 
+   
+    ❯❱ [1msemgrep-reglas.error-message-leak[0m
+          [31m[1m[24m❰❰ Blocking ❱❱[0m
+          Se devuelve el mensaje interno del error al cliente (expone detalles de la base de datos).
+                                                                                                    
+           37┆ glosa: err.message || err.toString(),
+                                              
+  [36m[22m[24m  BACKEND\src\routes\users.js[0m
+   ❯❯❱ [1msemgrep-reglas.jwt-secret-fallback-hardcoded[0m
+          [31m[1m[24m❰❰ Blocking ❱❱[0m
+          Secreto JWT con valor por defecto escrito en el código. Si falta la variable de entorno, cualquiera
+          puede firmar tokens.                                                                               
+                                                                                                             
+            8┆ const JWT_SECRET = process.env.JWT_SECRET || "inseguro";
+   
+   ❯❯❱ [1msemgrep-reglas.plaintext-password-insert[0m
+          [31m[1m[24m❰❰ Blocking ❱❱[0m
+          Contraseña guardada sin hash en la tabla usuarios. Aplicar bcrypt.hash() antes de guardar.
+                                                                                                    
+           36┆ "INSERT INTO usuarios (nombre_usuario, contrasena, correo) VALUES ($1, $2, $3) RETURNING
+               id, nombre_usuario, correo, created_at",                                                
+   
+    ❯❱ [1msemgrep-reglas.error-message-leak[0m
+          [31m[1m[24m❰❰ Blocking ❱❱[0m
+          Se devuelve el mensaje interno del error al cliente (expone detalles de la base de datos).
+                                                                                                    
+           69┆ glosa: err.message || err.toString(),
+            ⋮┆----------------------------------------
+          135┆ glosa: err.message || err.toString(),
+            ⋮┆----------------------------------------
+          241┆ glosa: err.message || err.toString(),
+            ⋮┆----------------------------------------
+          278┆ glosa: err.message || err.toString(),
+   
+   ❯❯❱ [1msemgrep-reglas.plaintext-password-insert[0m
+          [31m[1m[24m❰❰ Blocking ❱❱[0m
+          Contraseña guardada sin hash en la tabla usuarios. Aplicar bcrypt.hash() antes de guardar.
+                                                                                                    
+          366┆ updateFields.push(`contrasena=$${paramIndex++}`);
+   
+    ❯❱ [1msemgrep-reglas.error-message-leak[0m
+          [31m[1m[24m❰❰ Blocking ❱❱[0m
+          Se devuelve el mensaje interno del error al cliente (expone detalles de la base de datos).
+                                                                                                    
+          432┆ glosa: err.message || err.toString(),
+   
+   ❯❯❱ [1msemgrep-reglas.plaintext-password-insert[0m
+          [31m[1m[24m❰❰ Blocking ❱❱[0m
+          Contraseña guardada sin hash en la tabla usuarios. Aplicar bcrypt.hash() antes de guardar.
+                                                                                                    
+          501┆ updateFields.push(`contrasena=$${paramIndex++}`);
+   
+    ❯❱ [1msemgrep-reglas.error-message-leak[0m
+          [31m[1m[24m❰❰ Blocking ❱❱[0m
+          Se devuelve el mensaje interno del error al cliente (expone detalles de la base de datos).
+                                                                                                    
+          566┆ glosa: err.message || err.toString(),
+   
+    ❯❱ [1msemgrep-reglas.audit-username-as-id[0m
+          [31m[1m[24m❰❰ Blocking ❱❱[0m
+          Se inserta nombreUsuario (texto) en auditoria.usuario_id (BIGINT); la inserción falla y la acción no
+          queda registrada.                                                                                   
+                                                                                                              
+          584┆ authUser?.nombreUsuario || null,
+   
+    ❯❱ [1msemgrep-reglas.error-message-leak[0m
+          [31m[1m[24m❰❰ Blocking ❱❱[0m
+          Se devuelve el mensaje interno del error al cliente (expone detalles de la base de datos).
+                                                                                                    
+          594┆ glosa: err.message || err.toString(),
+                                                       
+  [36m[22m[24m  FRONTEND\src\context\AuthContext.jsx[0m
+    ❯❱ [1msemgrep-reglas.token-in-localstorage[0m
+          [31m[1m[24m❰❰ Blocking ❱❱[0m
+          Token de sesión guardado en localStorage; queda accesible para JavaScript ante un XSS.
+                                                                                                
+            8┆ () => localStorage.getItem("token") || null
+            ⋮┆----------------------------------------
+           41┆ localStorage.setItem("token", newToken);
+                                           
+  [36m[22m[24m  FRONTEND\src\lib\api.jsx[0m
+    ❯❱ [1msemgrep-reglas.token-in-localstorage[0m
+          [31m[1m[24m❰❰ Blocking ❱❱[0m
+          Token de sesión guardado en localStorage; queda accesible para JavaScript ante un XSS.
+                                                                                                
+           21┆ const token = localStorage.getItem('token')

@@ -1,0 +1,155 @@
+# Pipeline de seguridad y calidad de Cuidarte+ (sección 9 del informe EP5)
+# Cada cambio pasa por SAST, SCA, detección de secretos, calidad de código y pruebas
+# automatizadas. El gate de calidad bloquea el despliegue si quedan hallazgos críticos.
+name: Pipeline de seguridad Cuidarte+
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  sast:
+    name: SAST (Semgrep)
+    runs-on: ubuntu-latest
+    outputs:
+      errores: ${{ steps.res.outputs.errores }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install semgrep
+      - name: Analizar código con reglas propias
+        run: semgrep --config semgrep-reglas/cuidarte.yml BACKEND FRONTEND --json -o semgrep.json --metrics=off || true
+      - id: res
+        name: Resumen
+        run: |
+          errores=$(jq '[.results[] | select(.extra.severity=="ERROR")] | length' semgrep.json)
+          total=$(jq '.results | length' semgrep.json)
+          echo "errores=$errores" >> "$GITHUB_OUTPUT"
+          echo "### SAST (Semgrep): $total hallazgos, $errores de severidad ERROR" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with: { name: semgrep, path: semgrep.json }
+
+  sca:
+    name: SCA (npm audit)
+    runs-on: ubuntu-latest
+    outputs:
+      criticas: ${{ steps.res.outputs.criticas }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Auditar dependencias de backend y frontend
+        run: |
+          (cd BACKEND && npm audit --json > ../audit-backend.json) || true
+          (cd FRONTEND && npm audit --json > ../audit-frontend.json) || true
+      - id: res
+        name: Resumen
+        run: |
+          criticas=$(( $(jq '.metadata.vulnerabilities.critical' audit-backend.json) + $(jq '.metadata.vulnerabilities.critical' audit-frontend.json) ))
+          total=$(( $(jq '.metadata.vulnerabilities.total' audit-backend.json) + $(jq '.metadata.vulnerabilities.total' audit-frontend.json) ))
+          echo "criticas=$criticas" >> "$GITHUB_OUTPUT"
+          echo "### SCA (npm audit): $total vulnerabilidades, $criticas críticas" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with: { name: npm-audit, path: "audit-*.json" }
+
+  secretos:
+    name: Detección de secretos (gitleaks)
+    runs-on: ubuntu-latest
+    outputs:
+      secretos: ${{ steps.res.outputs.secretos }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Buscar secretos en el repositorio
+        run: docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:latest detect --source /repo --no-git --report-format json --report-path /repo/gitleaks.json --exit-code 0
+      - id: res
+        name: Resumen
+        run: |
+          secretos=$(jq 'length' gitleaks.json)
+          echo "secretos=$secretos" >> "$GITHUB_OUTPUT"
+          echo "### Secretos (gitleaks): $secretos secretos expuestos" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with: { name: gitleaks, path: gitleaks.json }
+
+  calidad:
+    name: Calidad de código (ESLint)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Analizar el frontend con ESLint
+        working-directory: FRONTEND
+        run: |
+          npm ci
+          npx eslint . -f json -o ../eslint.json || true
+      - name: Resumen
+        run: |
+          errores=$(jq '[.[].errorCount] | add' eslint.json)
+          avisos=$(jq '[.[].warningCount] | add' eslint.json)
+          echo "### Calidad (ESLint): $errores errores y $avisos advertencias" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with: { name: eslint, path: eslint.json }
+
+  pruebas:
+    name: Pruebas automatizadas (API + UI)
+    runs-on: ubuntu-latest
+    outputs:
+      fallidos: ${{ steps.res.outputs.fallidos }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Levantar ambiente QA con Docker
+        run: |
+          docker compose up -d --build
+          for i in $(seq 1 60); do curl -sf http://localhost:4444/ && break; sleep 3; done
+          for i in $(seq 1 60); do curl -sf http://localhost:3333/ > /dev/null && break; sleep 3; done
+      - name: Instalar dependencias de las pruebas
+        working-directory: pruebas/automatizacion
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: Suite de API (run-tests.js)
+        working-directory: pruebas/automatizacion
+        run: node run-tests.js
+      - name: Suite de interfaz (ui-tests.js)
+        working-directory: pruebas/automatizacion
+        run: node ui-tests.js
+      - id: res
+        name: Resumen
+        run: |
+          f=pruebas/automatizacion/evidencia/resultados-api.json
+          fallidos=$(jq '[.[] | select(.estado=="Fallido")] | length' $f)
+          aprobados=$(jq '[.[] | select(.estado=="Aprobado")] | length' $f)
+          echo "fallidos=$fallidos" >> "$GITHUB_OUTPUT"
+          echo "### Pruebas de API: $aprobados aprobados, $fallidos fallidos" >> "$GITHUB_STEP_SUMMARY"
+          jq -r '.[] | select(.estado=="Fallido") | "- \(.id): \(.incidente // "")"' $f >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: evidencia-pruebas, path: pruebas/automatizacion/evidencia }
+
+  gate:
+    name: Gate de calidad
+    runs-on: ubuntu-latest
+    needs: [sast, sca, secretos, calidad, pruebas]
+    steps:
+      - name: Evaluar criterios de salida
+        run: |
+          echo "### Gate de calidad" >> "$GITHUB_STEP_SUMMARY"
+          bloquear=0
+          if [ "${{ needs.sast.outputs.errores }}" -gt 0 ]; then echo "- ❌ SAST: ${{ needs.sast.outputs.errores }} hallazgos ERROR (OWASP A01/A02/A07)" >> "$GITHUB_STEP_SUMMARY"; bloquear=1; fi
+          if [ "${{ needs.sca.outputs.criticas }}" -gt 0 ]; then echo "- ❌ SCA: ${{ needs.sca.outputs.criticas }} dependencias críticas (OWASP A06)" >> "$GITHUB_STEP_SUMMARY"; bloquear=1; fi
+          if [ "${{ needs.secretos.outputs.secretos }}" -gt 0 ]; then echo "- ❌ Secretos: ${{ needs.secretos.outputs.secretos }} expuestos (ISO 27001 A.8.24)" >> "$GITHUB_STEP_SUMMARY"; bloquear=1; fi
+          if [ "${{ needs.pruebas.outputs.fallidos }}" -gt 0 ]; then echo "- ❌ Pruebas: ${{ needs.pruebas.outputs.fallidos }} casos fallidos (Ley 21.719, datos sensibles)" >> "$GITHUB_STEP_SUMMARY"; bloquear=1; fi
+          if [ $bloquear -eq 1 ]; then
+            echo "**Despliegue bloqueado:** quedan hallazgos que impiden el paso a producción." >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          echo "✅ Sin hallazgos críticos: se permite el despliegue." >> "$GITHUB_STEP_SUMMARY"
+
+  despliegue:
+    name: Despliegue a producción
+    runs-on: ubuntu-latest
+    needs: gate
+    steps:
+      - run: echo "Despliegue de Cuidarte+ (solo se ejecuta si el gate de calidad aprueba)"
